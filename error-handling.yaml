@@ -1,0 +1,43 @@
+- name: Error handling in ansible play
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install Security updates
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - openssl
+        - openssh
+      ignore_errors: true
+
+    - name: Check if docker is installed
+      ansible.builtin.command:
+        cmd: docker --version
+      register: output
+      ignore_errors: true
+
+    - name: Debugging the docker-version output
+      ansible.builtin.debug:
+        var: output
+
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable"
+        state: present
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install docker
+      ansible.builtin.apt:
+        name: docker-ce
+        state: present
+      when: output.failed == true
